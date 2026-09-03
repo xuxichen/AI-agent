@@ -1,8 +1,7 @@
 # AI-agent — LangGraph Learning Project
 
 Minimal, runnable [LangGraph](https://docs.langchain.com/oss/python/langgraph/overview) examples
-built while learning agent fundamentals. **Every example runs offline** — no API key, no network
-call, no model download.
+built while learning agent fundamentals.
 
 **English** | [简体中文](README.zh.md)
 
@@ -92,10 +91,15 @@ Keep that in mind when adding `dayN/0Y_*.py` files.
 │   └── 01_first_graph.py     # minimal StateGraph: two nodes, state flows through them
 ├── tests/
 │   └── test_day1_graph.py    # 3 tests, loads the example by file path
+├── docs/
+│   ├── 00-syllabus.md        # task-driven learning outline: one question per unit, closed-book checks (中文)
+│   ├── 01-capstone.md        # capstone spec — a multi-source research agent with an entry-level rubric (中文)
+│   └── atguigu-env.md        # tutorial chapter → environment → package map (中文)
 ├── pyproject.toml            # project metadata, requires-python, dev dependency group
 ├── uv.lock                   # exact pinned resolution — commit it, it is the source of truth
 ├── requirements.txt          # pinned runtime deps, for the plain-pip route
 ├── requirements-dev.txt      # runtime deps + pytest
+├── .env.example              # API key template — copy to .env, which is gitignored
 ├── README.zh.md              # Simplified Chinese version of this document
 ├── LICENSE                   # MIT
 └── .gitignore                # .venv/, caches, model weights, vector stores, secrets
@@ -133,6 +137,15 @@ checkpointing, and an LLM-backed node.
 - `requirements.txt` is a full pin of one specific resolution (macOS arm64). Prefer `uv sync`
   for exact reproduction; regenerate the file with
   `uv pip freeze | grep -v '^pip==' > requirements.txt` after changing dependencies.
-- No API key is required by anything in this repository yet. When a day adds an LLM node, keep
-  the key in `.env` — it is already gitignored along with `.env.*`, `*.pem`, and `service-account*.json`.
+- API keys: `day1/01_first_graph.py` needs none — it is pure state-graph code with no model call.
+  The tutorial's LLM chapters (unit U1-5 onward in [`docs/00-syllabus.md`](docs/00-syllabus.md)) call
+  DeepSeek over the network and read `DEEPSEEK_API_KEY` from `.env`; copy `.env.example` to `.env`
+  to supply it. `.env` and `.env.*` are gitignored (along with `*.pem` and `service-account*.json`);
+  `.env.example` is committed and holds no real key.
+- Learning AI Agent development? [`docs/00-syllabus.md`](docs/00-syllabus.md) turns the tutorial's 78
+  notebooks into task units — each one states the question you must answer, the feature you must write,
+  and how it is verified. The final project and the pass/fail rubric live in
+  [`docs/01-capstone.md`](docs/01-capstone.md). Both are in Chinese.
+- Following the 尚硅谷 LangGraph tutorial? [`docs/atguigu-env.md`](docs/atguigu-env.md) maps each
+  course chapter to the packages it actually needs, and translates `conda` commands to `uv`.
 - Licensed under the MIT License; see `LICENSE`.

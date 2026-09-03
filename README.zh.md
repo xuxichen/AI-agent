@@ -3,7 +3,7 @@
 [English](README.md) | **简体中文**
 
 动手写的 [LangGraph](https://docs.langchain.com/oss/python/langgraph/overview) 最小可运行示例，
-用于学习 Agent 的基础机制。**所有示例离线可跑** —— 不需要 API Key，不发网络请求，不下载模型。
+用于学习 Agent 的基础机制。
 
 ---
 
@@ -90,10 +90,15 @@ uv run pytest            # 或者：uv run pytest -v
 │   └── 01_first_graph.py     # 最小 StateGraph：两个节点，状态依次流过
 ├── tests/
 │   └── test_day1_graph.py    # 3 个测试，按文件路径加载示例
+├── docs/
+│   ├── 00-syllabus.md        # 任务驱动学习大纲：每个单元一个问题、一段要写的代码、一条验收
+│   ├── 01-capstone.md        # 结业项目需求：多来源研究 Agent，含入门判定表
+│   └── atguigu-env.md        # 教程章节 → 环境 → 依赖对照表、conda→uv 命令翻译
 ├── pyproject.toml            # 项目元信息、requires-python、dev 依赖组
 ├── uv.lock                   # 精确锁定的依赖解析 —— 应当提交，它是可复现性的唯一来源
 ├── requirements.txt          # 全量 pin 的运行依赖，供纯 pip 路径使用
 ├── requirements-dev.txt      # 运行依赖 + pytest
+├── .env.example              # API Key 模板 —— 复制成 .env 使用，.env 已被 gitignore
 ├── README.md                 # 英文版文档
 ├── LICENSE                   # MIT
 └── .gitignore                # .venv/、各类缓存、模型权重、向量库、密钥
@@ -128,6 +133,13 @@ uv run pytest            # 或者：uv run pytest -v
 - `.venv/` 已被 gitignore —— 永远不要提交它。环境应由 `uv.lock` / `requirements.txt` 重建。
 - `requirements.txt` 是某一次解析结果的全量 pin（macOS arm64）。要精确复现请优先用 `uv sync`；
   改完依赖后用 `uv pip freeze | grep -v '^pip==' > requirements.txt` 重新生成该文件。
-- 本仓库目前没有任何代码需要 API Key。将来某天真加上 LLM 节点时，把密钥放进 `.env` ——
-  它连同 `.env.*`、`*.pem`、`service-account*.json` 已经在 `.gitignore` 里了。
+- 关于 API Key：`day1/01_first_graph.py` 不需要任何 key，它是纯状态图代码，不调用模型。教程的 LLM
+  章节（[`docs/00-syllabus.md`](docs/00-syllabus.md) 的 U1-5 单元起）会通过网络调用 DeepSeek，并从
+  `.env` 读 `DEEPSEEK_API_KEY`；把 `.env.example` 复制成 `.env` 填入即可。`.env` 连同 `.env.*`、
+  `*.pem`、`service-account*.json` 已被 `.gitignore` 拦住；`.env.example` 会被提交，里面不包含真实密钥。
+- 想系统学 AI Agent 开发：看 [`docs/00-syllabus.md`](docs/00-syllabus.md)，它把教程的 78 个 notebook 拆成了任务单元，
+  每个单元都写明“先回答什么问题、要写出什么功能、怎么算验收”，每章末尾有闭卷检验；
+  结业项目需求与“算不算真入门”的判定表在 [`docs/01-capstone.md`](docs/01-capstone.md)。
+- 如果跟的是尚硅谷 LangGraph 教程，先看 [`docs/atguigu-env.md`](docs/atguigu-env.md)：
+  它把每一章对应真正需要装的包列了出来，并把教程里的 `conda` 命令翻译成了 `uv`。
 - 本项目采用 MIT 许可证，详见 `LICENSE`。
