@@ -4,7 +4,7 @@ Minimal, runnable [LangGraph](https://docs.langchain.com/oss/python/langgraph/ov
 built while learning agent fundamentals. **Every example runs offline** — no API key, no network
 call, no model download.
 
-[中文快速开始](#中文快速开始)
+**English** | [简体中文](README.zh.md)
 
 ---
 
@@ -24,7 +24,7 @@ environment boring. Relax `requires-python` in `pyproject.toml` if you want to e
 ### Option A — uv (recommended)
 
 ```bash
-git clone https://github.com/<your-username>/AI-agent.git
+git clone https://github.com/xuxichen/AI-agent.git
 cd AI-agent
 uv sync                              # creates .venv, installs runtime + dev deps
 uv run python day1/01_first_graph.py # run an example
@@ -37,7 +37,7 @@ uv downloads one — you do not need to install Python 3.13 yourself.
 ### Option B — plain pip
 
 ```bash
-git clone https://github.com/<your-username>/AI-agent.git
+git clone https://github.com/xuxichen/AI-agent.git
 cd AI-agent
 python3.13 -m venv .venv
 source .venv/bin/activate            # Windows: .venv\Scripts\activate
@@ -96,6 +96,8 @@ Keep that in mind when adding `dayN/0Y_*.py` files.
 ├── uv.lock                   # exact pinned resolution — commit it, it is the source of truth
 ├── requirements.txt          # pinned runtime deps, for the plain-pip route
 ├── requirements-dev.txt      # runtime deps + pytest
+├── README.zh.md              # Simplified Chinese version of this document
+├── LICENSE                   # MIT
 └── .gitignore                # .venv/, caches, model weights, vector stores, secrets
 ```
 
@@ -124,18 +126,6 @@ checkpointing, and an LLM-backed node.
 | `ModuleNotFoundError: langgraph` | You are on a different interpreter than the project venv | Check `which python`, or prefix commands with `uv run` |
 | Example ran, then a later run uses stale code | IDE selected its own interpreter | Point the editor at `.venv/bin/python` (`Python: Select Interpreter`) |
 
-## 中文快速开始
-
-```bash
-git clone <你的仓库地址> && cd AI-agent
-uv sync                              # 建 .venv 并装齐依赖（缺 3.13 会自动下载）
-uv run python day1/01_first_graph.py # 运行示例
-uv run pytest                        # 跑测试，应输出 3 passed
-```
-
-要点：一个项目配一个 `.venv`，多版本环境天然并存，不存在"切换"动作；但 venv 写死绝对路径，
-**改名或搬动项目目录后必须 `uv venv --clear` 重建**。
-
 ## Notes
 
 - `.venv/` is gitignored — never commit it. The environment is rebuilt from `uv.lock` /
@@ -145,5 +135,4 @@ uv run pytest                        # 跑测试，应输出 3 passed
   `uv pip freeze | grep -v '^pip==' > requirements.txt` after changing dependencies.
 - No API key is required by anything in this repository yet. When a day adds an LLM node, keep
   the key in `.env` — it is already gitignored along with `.env.*`, `*.pem`, and `service-account*.json`.
-- This project has no `LICENSE` file yet; on GitHub that means all rights reserved by default.
-  Add one before you expect others to reuse the code.
+- Licensed under the MIT License; see `LICENSE`.
