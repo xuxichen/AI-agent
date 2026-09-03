@@ -1,0 +1,17 @@
+[project]
+name = "ai-agent-learning"
+version = "0.1.0"
+description = "Hands-on LangGraph learning project: minimal state-graph examples, no API key required"
+readme = "README.md"
+requires-python = ">=3.13,<3.14"
+dependencies = [
+    "langgraph>=1.2.11,<2.0",
+]
+
+[dependency-groups]
+dev = [
+    "pytest>=8.4",
+]
+
+# No [build-system]: uv treats this as a virtual project and installs
+# only the dependencies, never the repo itself (there is no importable package).
