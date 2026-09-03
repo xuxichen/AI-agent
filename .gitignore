@@ -1,0 +1,103 @@
+# 虚拟环境
+.venv/
+venv/
+env/
+
+# Python 缓存与字节码
+__pycache__/
+*.py[cod]
+*.so
+
+# 打包/构建产物
+build/
+dist/
+*.egg-info/
+.eggs/
+
+# 测试与覆盖率
+.pytest_cache/
+.mypy_cache/
+.ruff_cache/
+.coverage
+htmlcov/
+
+# Jupyter
+.ipynb_checkpoints/
+
+# 密钥（.env 只是最常见的一种落点，Agent 项目还有这些）
+.env
+.env.*
+!.env.example
+*.key
+*.pem
+.netrc
+secrets.json
+secrets.yaml
+service-account*.json
+*.local.json
+*.local.yaml
+
+# IDE
+.idea/
+.vscode/
+
+# ===== 以下为 AI Agent 学习项目特有产物 =====
+
+# 模型权重：单个常达 GB，GitHub 单文件 100MB 上限会直接拒推，
+# 且一旦提交就无法从 history 中抹掉
+*.gguf
+*.safetensors
+*.onnx
+*.pt
+*.pth
+*.ckpt
+*.h5
+*.pkl
+*.bin
+
+# 模型与依赖缓存（HuggingFace / pip / uv 等都落在 .cache 下）
+.cache/
+model_cache/
+hf_home/
+
+# 向量库与 RAG 持久化目录
+chroma/
+.chroma/
+lancedb/
+qdrant_storage/
+*.faiss
+*.index
+
+# Agent 运行态、日志与实验追踪
+logs/
+*.log
+wandb/
+mlruns/
+runs/
+outputs/
+tmp/
+# LlamaIndex / AutoGen 在 cwd 生成的默认持久化目录（仅根目录层级）
+/storage/
+/rest/
+
+# 本地数据库与 SQLite WAL（LangGraph checkpoint 常落这里）
+*.db
+*.db-wal
+*.db-shm
+*.sqlite
+*.sqlite3
+
+# 下载的数据集（学习用途，体积大且有版权风险）
+data/
+*.parquet
+*.feather
+*.arrow
+
+# 浏览器自动化 / MCP 抓取的产物
+test-results/
+playwright-report/
+blob-report/
+playwright/.cache/
+
+# macOS
+.DS_Store
