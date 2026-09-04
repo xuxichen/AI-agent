@@ -1,7 +1,0 @@
-# Development extras on top of the pinned runtime deps.
-# Usage:  pip install -r requirements-dev.txt
--r requirements.txt
-
-# Pinned direct dev dependency; its own deps (pluggy, pygments, iniconfig)
-# float here. For a byte-exact environment use `uv sync` + the committed uv.lock.
-pytest==9.1.1
