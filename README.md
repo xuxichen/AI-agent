@@ -1,20 +1,25 @@
 # AI-agent
 
-The working environment for [`doc/AI_Agent_Outline.md`](<doc/AI_Agent_Outline.md>) — a 4-stage,
+The working environment for [`docs/AI_Agent_Outline.md`](docs/AI_Agent_Outline.md) — a 4-stage,
 ~6-month plan for moving from front-end engineering to AI Agent development.
 
 [**English**](README.md) | [简体中文](README.zh.md)
 
 ## The plan, in four lines
 
-1. **Months 1–2** — Python async, FastAPI, Pydantic · LLM and prompt fundamentals · RAG → a streaming chat service
+1. **Months 1–2** — Python async, FastAPI, Pydantic · LLM and prompt fundamentals · RAG → a streaming chat service **(current stage)**
 2. **Months 3–4** — planner, tools, memory, ReAct loop · LangChain / LangGraph / LlamaIndex → a multi-tool assistant
 3. **Month 5** — multi-agent patterns · API serving, SSE, observability, evaluation, approval gates → a RAG Q&A agent over your own notes
 4. **Month 6** — Node product layer + Python AI layer, deployment → one complete agent product
 
-> **Where this environment sits in the plan:** it pins `langgraph` — a stage-2 dependency — and nothing
-> else. Stage-1 packages (FastAPI, Pydantic, a vector store, an LLM client) are **not installed yet**;
-> add them with `uv add` as you reach them.
+> **Where this environment sits in the plan:** stage 1 is provisioned — FastAPI, uvicorn, Pydantic,
+> pydantic-settings, an OpenAI client (it talks to DeepSeek through `base_url`), and Chroma — plus
+> `langgraph`, which belongs to stage 2. Stages 3–4 bring their own packages when you get there;
+> nothing is pre-installed for them.
+>
+> **One gap in the plan worth knowing early:** DeepSeek has no embedding endpoint. Chroma's default
+> embedding function sidesteps this by downloading a small local ONNX model on first use (~80 MB,
+> one-off, needs network). That is the one place in stage 1 where "no API key needed" stops being true.
 
 ## Requirements
 
@@ -33,10 +38,12 @@ source .venv/bin/activate        # Windows: .venv\Scripts\activate
 ## Verify
 
 ```bash
-python -c "import sys, langgraph; print(sys.version.split()[0])"
+uv run pytest -q
 ```
 
-Expected: `3.13.x`. Current lock resolves to **langgraph 1.2.11**.
+Expected: `7 passed`. `tests/test_env.py` exercises every declared dependency at work — an SSE stream
+through FastAPI, a persist-and-query round trip in Chroma, a `.env` read through pydantic-settings —
+offline, with no API key and no model download.
 
 > `pip` is available inside this venv — it is pinned in the `dev` group, so `uv sync` keeps it.
 > Add packages with `uv add <pkg>`. Plain `pip install <pkg>` also works, but it leaves
@@ -52,10 +59,11 @@ rm -rf .venv && uv sync
 
 | File | Role |
 |---|---|
-| `doc/AI_Agent_ Outline.md` | The study plan itself — 4 stages at monthly granularity, plus resource links |
+| `docs/AI_Agent_Outline.md` | The study plan itself — 4 stages at monthly granularity, plus resource links |
 | `pyproject.toml` | Project metadata and dependency ranges |
 | `uv.lock` | Exact pinned resolution — the source of truth for reproducibility |
 | `requirements.txt` | Generated export of the lock, for people and CI without `uv` |
+| `tests/test_env.py` | Offline environment check — run it after any `uv add` or on a new machine |
 | `.gitignore` | Keeps `.venv/`, `.env*`, model weights and caches out of git |
 
 ## `requirements.txt`
@@ -71,6 +79,6 @@ Regenerate it whenever you `uv add` or `uv remove`. Two things worth knowing:
 - Editing `requirements.txt` changes **nothing** for `uv sync` — it reads only
   `pyproject.toml` and `uv.lock`, and will not warn you about the mismatch.
 - On a machine without `uv`, `pip install -r requirements.txt` reproduces this exact set
-  (verified: a dry run against an empty Python 3.13 venv resolves all 43 packages).
+  (verified: a dry run against an empty Python 3.13 venv resolves all 106 packages).
 
 Licensed under the MIT License; see `LICENSE`.

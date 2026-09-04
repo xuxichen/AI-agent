@@ -1,11 +1,17 @@
 [project]
 name = "ai-agent-learning"
 version = "0.1.0"
-description = "uv-managed Python environment for LangGraph experiments"
+description = "Working environment for the 4-stage AI Agent study plan in docs/AI_Agent_Outline.md"
 readme = "README.md"
 requires-python = ">=3.13,<3.14"
 dependencies = [
+    "chromadb>=1.5.9",
+    "fastapi>=0.141.1",
     "langgraph>=1.2.11,<2.0",
+    "openai>=3.8.0",
+    "pydantic>=2.13.5",
+    "pydantic-settings>=2.15.0",
+    "uvicorn[standard]>=0.52.4",
 ]
 
 [dependency-groups]
