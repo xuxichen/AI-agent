@@ -86,6 +86,7 @@ httptools==0.8.0
     # via uvicorn
 httpx==0.28.1
     # via
+    #   ai-agent-learning
     #   chromadb
     #   huggingface-hub
     #   langchain-core
