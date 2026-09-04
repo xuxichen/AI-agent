@@ -19,6 +19,7 @@ dependencies = [
 dev = [
     "pip>=26.2.1",
     "pytest>=8.4",
+    "ruff>=0.16.6",
 ]
 
 # No [build-system]: uv treats this as a virtual project and installs

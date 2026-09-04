@@ -1,19 +1,24 @@
-"""Day 2 自动验收。跑法：
+"""Day 2 自动验收。跑法（仓库根目录）：
 
     uv run python stage1/day002_python_core/check.py
 
-先按 01_作业.md 第 1 题抄一份「故意错的」calculator.py —— 那时这里应该报 3 个 ✗。
+它读你的 calculator.py：先用 AST 查写法，再 exec 进来查运行时行为。
+calculator.py 不存在时 6 项全红——你不写文件它是过不了的。
+
+注意：这里不用 importlib，直接编译源码文本。importlib 会命中 __pycache__ 里
+的陈旧字节码，让你改错了却看到绿灯（我踩过，两版文件大小相同、同一秒写入，
+timestamp 校验直接放过）。
 """
 
 import ast
-import inspect
+import dataclasses
 import sys
 import types
 from pathlib import Path
 
 HERE = Path(__file__).resolve().parent
+ROOT = HERE.parent.parent
 TARGET = HERE / "calculator.py"
-METHODS = ("add", "sub", "mul")
 
 results: list[tuple[bool, str]] = []
 
@@ -25,151 +30,180 @@ def check(label: str, fn) -> None:
     except AssertionError as e:
         results.append((False, f"{label} —— {e}"))
     except Exception as e:
-        results.append((False, f"{label} —— 出了意外：{type(e).__name__}: {e}"))
+        results.append((False, f"{label} —— 检查器撞到了异常：{type(e).__name__}: {e}"))
 
 
-def load_module():
-    if not TARGET.exists():
-        raise AssertionError(
-            f"没找到 {TARGET.relative_to(HERE.parent.parent)}。"
-            "先按 01_作业.md 第 1 题抄一份「故意错的」，让这里红起来。"
-        )
-    source = TARGET.read_text(encoding="utf-8")
-    # 不用 importlib：它会命中 __pycache__ 里的陈旧字节码。
-    # 同大小、同一秒内改写的文件会让 timestamp 校验通过，
-    # 结果就是 check.py 验的是上一版代码。直接编译源码文本最稳。
-    mod = types.ModuleType("day2_calculator")
-    mod.__file__ = str(TARGET)
-    try:
-        exec(compile(source, str(TARGET), "exec"), mod.__dict__)
-    except Exception as e:
-        raise AssertionError(f"calculator.py 导入就炸了：{type(e).__name__}: {e}")
-    if not hasattr(mod, "Calculator"):
-        raise AssertionError("calculator.py 里必须有 class Calculator")
-    return mod
-
-
-try:
-    mod = load_module()
-except AssertionError as e:
-    print(f"✗ {e}\n\nDay 2 未过关：还没有可查的 calculator.py")
+if not TARGET.exists():
+    print(f"✗ 找不到 {TARGET.relative_to(ROOT)}")
+    print("  先做作业第 6 题：在 stage1/day002_python_core/ 下建 calculator.py")
+    print("\nDay 2 未过关：0/6")
     sys.exit(1)
 
-C = mod.Calculator
 SRC = TARGET.read_text(encoding="utf-8")
-TREE = ast.parse(SRC)
+try:
+    TREE = ast.parse(SRC)
+except SyntaxError as e:
+    print(f"✗ calculator.py 有语法错误：第 {e.lineno} 行 {e.msg}")
+    print("\nDay 2 未过关")
+    sys.exit(1)
+
+mod = types.ModuleType("day2_calculator")
+mod.__file__ = str(TARGET)
+try:
+    exec(compile(SRC, str(TARGET), "exec"), mod.__dict__)
+except Exception as e:
+    print(f"✗ calculator.py 导入阶段就炸了：{type(e).__name__}: {e}")
+    print("  注意 `if __name__ == '__main__'` 里的代码不会执行，所以炸的一定是顶层语句")
+    print("\nDay 2 未过关")
+    sys.exit(1)
+
+FUNCS = {n.name: n for n in ast.walk(TREE) if isinstance(n, (ast.FunctionDef, ast.AsyncFunctionDef))}
+CLASSES = {n.name: n for n in ast.walk(TREE) if isinstance(n, ast.ClassDef)}
+MUTABLE = (ast.List, ast.Dict, ast.Set)
 
 
-# ---- 1. 三个方法算得对，且各记一条 history ----
-def t_methods():
-    try:
-        c = C("probe")
-    except TypeError as e:
-        raise AssertionError(f"构造器要能接一个 name：Calculator('probe') —— {e}")
-    for m, args, want in (("add", (2, 3), 5), ("sub", (9, 4), 5), ("mul", (6, 7), 42)):
-        fn = getattr(c, m, None)
-        assert callable(fn), f"缺方法 {m}(a, b)"
-        got = fn(*args)
-        assert got == want, f"{m}{args} 应返回 {want}，实际 {got!r}"
-    assert len(c.history) == 3, f"三次调用应记 3 条 history，实际 {len(c.history)} 条"
-    for text, nums in zip(c.history, (("2", "3"), ("9", "4"), ("6", "7"))):
-        assert all(n in str(text) for n in nums), (
-            f"history 记录 {text!r} 里看不出操作数 {nums}，"
-            '写成 f"add({a}, {b}) = {r}" 这样'
-        )
-    return "add/sub/mul 正确，各记 1 条"
-
-
-# ---- 2. 全文件没有可变默认参数 ----
-def t_no_mutable_defaults():
+# ---- 1. 没有任何函数用可变对象当默认值 ----
+def t_no_mutable_default():
     bad = []
-    for node in ast.walk(TREE):
-        if not isinstance(node, (ast.FunctionDef, ast.AsyncFunctionDef)):
-            continue
-        defaults = list(node.args.defaults) + [d for d in node.args.kw_defaults if d]
-        for d in defaults:
-            if isinstance(d, (ast.List, ast.Dict, ast.Set)):
-                bad.append(f"{node.name}() 第 {d.lineno} 行")
+    for f in FUNCS.values():
+        for d in list(f.args.defaults) + [x for x in f.args.kw_defaults if x]:
+            if isinstance(d, MUTABLE):
+                bad.append(f"{f.name}() 第 {d.lineno} 行")
+            if isinstance(d, ast.Call) and getattr(d.func, "id", "") in {"list", "dict", "set"}:
+                bad.append(f"{f.name}() 第 {d.lineno} 行")
     assert not bad, (
-        "用了可变默认值：" + "、".join(bad) + "。改成 x=None，函数体内 if x is None: x = []"
+        f"可变默认值 {bad}。默认值只在 def 那一行求值一次，"
+        "改成 None 哨兵：def f(x, acc=None) 然后 if acc is None: acc = []"
     )
-    return "AST 扫描：0 处"
+    assert "running_total" in FUNCS, "还没写 running_total（作业第 6 题要求 1）"
+    defaults = [ast.unparse(d) for d in FUNCS["running_total"].args.defaults]
+    return f"零个可变默认值；running_total 的默认值是 {defaults}"
 
 
-# ---- 3. history 不是类属性 ----
-def t_history_not_class_attr():
-    assert "history" not in C.__dict__, (
-        "history 写在了类体里（class Calculator: history = []），"
-        "所有实例共享同一个列表。挪进 __init__：self.history = []"
+# ---- 2. Calculator 的历史记录不能是类属性 ----
+def t_no_mutable_class_attr():
+    assert "Calculator" in CLASSES, "还没写 class Calculator（作业第 6 题要求 2）"
+    bad = []
+    for st in CLASSES["Calculator"].body:
+        if isinstance(st, ast.Assign) and isinstance(st.value, MUTABLE):
+            names = ",".join(ast.unparse(t) for t in st.targets)
+            bad.append(f"第 {st.lineno} 行 {names} = {ast.unparse(st.value)}")
+        if isinstance(st, ast.AnnAssign) and isinstance(st.value, MUTABLE):
+            bad.append(f"第 {st.lineno} 行 {ast.unparse(st.target)}: ... = {ast.unparse(st.value)}")
+    assert not bad, (
+        f"Calculator 类体里有裸的可变类属性：{bad}。"
+        "类体只执行一次，那个列表会被所有实例共享。搬到 __init__ 里 self.history = []"
     )
-    shared = [k for k, v in vars(C).items() if isinstance(v, (list, dict, set))]
-    assert not shared, f"类体里还有可变对象 {shared}，同样会被所有实例共享"
-    return "类体干净"
+    return "类体里没有 = [] 这种写法"
 
 
-# ---- 4. 两个实例互不污染 ----
-def t_isolated():
-    c1, c2 = C("a"), C("b")
-    c1.add(1, 1)
-    c1.add(2, 2)
-    assert len(c1.history) == 2, f"c1 应有 2 条，实际 {len(c1.history)}"
+# ---- 3. 两个计算器真的隔离 ----
+def t_instances_isolated():
+    assert hasattr(mod, "Calculator"), "Calculator 没定义"
+    c1, c2 = mod.Calculator(), mod.Calculator()
+    assert hasattr(c1, "history"), "Calculator 实例上找不到 history 属性"
+    c1.add(5)
     assert c2.history == [], (
-        f"c2 被 c1 污染了：{c2.history}。"
-        "这就是第 3 项那个类属性 bug 的后果"
+        f"只给 c1 加了一次数，c2.history 就成了 {c2.history}。"
+        "别人的数据出现在你的对象里 —— 这是类属性共享，见教案第四节"
     )
-    assert c1.history is not c2.history, "两个实例指向同一个 list 对象"
-    return "c1 记 2 条，c2 仍是 []"
+    assert c1.history is not c2.history, "c1.history 和 c2.history 是同一个列表对象"
+    return f"c1.history={c1.history} 而 c2.history={c2.history}"
 
 
-# ---- 5. total 用 None 哨兵 ----
-def t_total():
-    assert hasattr(mod, "total"), "缺模块级函数 total(nums=None)"
-    sig = inspect.signature(mod.total)
-    p = sig.parameters.get("nums")
-    assert p is not None, "total 的参数名应为 nums"
-    assert p.default is None, (
-        f"total 的默认值应为 None（哨兵），实际是 {p.default!r}"
+# ---- 4. 端到端算式与契约一致 ----
+def t_arithmetic():
+    c = mod.Calculator()
+    r1, r2 = c.add(5), c.sub(2)
+    assert (r1, r2) == (5, 3), (
+        f"add(5) 应返回 5、sub(2) 应返回 3，实际 ({r1}, {r2})。"
+        "方法要把「算完之后的当前值」return 出来"
     )
-    assert mod.total([1, 2, 3]) == 6, "total([1,2,3]) 应为 6"
-    for _ in range(3):
-        assert mod.total() == 0, "total() 反复调用结果变了 —— 哨兵没生效"
-    return "None 哨兵 + 三次空调用不累积"
-
-
-# ---- 6. 装饰器：至少用一个，且不吃掉 __name__ ----
-def t_decorator():
-    cls = next((n for n in TREE.body if isinstance(n, ast.ClassDef) and n.name == "Calculator"), None)
-    assert cls, "找不到 class Calculator"
-    deco = [m.name for m in cls.body if isinstance(m, ast.FunctionDef) and m.decorator_list]
-    assert deco, (
-        "Calculator 里没有任何方法被套上装饰器。"
-        "第 2 题要求：自己写一个 logged，至少套一个方法"
+    assert c.history == [5, 3], (
+        f"history 应是 [5, 3]（每次操作后的当前值），实际 {c.history}"
     )
-    for name in METHODS:
-        fn = getattr(C, name, None)
-        if fn is None:
+    assert mod.running_total([1, 2, 3]) == [1, 3, 6], "running_total 要返回累计和"
+    again = mod.running_total([9])
+    assert again == [9], (
+        f"running_total([9]) 应返回 [9]，实际 {again}。"
+        "如果它是 [1,3,6,15]，说明你上一次的列表还活着 —— 就是第 1 项那个坑"
+    )
+    return "add/sub 与 history、running_total 两次调用都独立"
+
+
+# ---- 5. 装饰器存在，而且没吃掉名字 ----
+def t_decorator_keeps_name():
+    c = mod.Calculator()
+    assert c.add.__name__ == "add", (
+        f"Calculator.add 的名字变成了 {c.add.__name__!r} —— 你的装饰器把它吃了。"
+        "在内层函数上面加一行 @functools.wraps(fn)"
+    )
+    used = set()
+    for f in FUNCS.values():
+        for d in f.decorator_list:
+            used.add(ast.unparse(d))
+    mine = {n for n in used if n in FUNCS}
+    assert mine, (
+        f"没有你自己的装饰器被用上（现有装饰器：{sorted(used) or '无'}）。"
+        "作业第 6 题要求 3：写一个 log_call 并 @ 在 add 或 sub 上"
+    )
+    body = ast.unparse(FUNCS[next(iter(mine))])
+    assert "wraps" in body, f"装饰器 {sorted(mine)} 里没有 functools.wraps"
+    return f"装饰器 {sorted(mine)} 存在，且 __name__ 保住了"
+
+
+# ---- 6. dataclass 的可变字段用 default_factory ----
+def t_dataclass_factory():
+    candidates = [
+        name
+        for name, cls in vars(mod).items()
+        if isinstance(cls, type) and hasattr(cls, "__dataclass_fields__")
+    ]
+    assert candidates, "文件里没有任何 @dataclass（作业第 6 题要求 4）"
+    checked = []
+    for name in candidates:
+        cls = getattr(mod, name)
+        # default_factory 没设时是 dataclasses.MISSING，不是 None——这是最常写错的地方
+        factories = [
+            f for f, m in cls.__dataclass_fields__.items()
+            if m.default_factory is not dataclasses.MISSING
+        ]
+        if not factories:
             continue
-        assert fn.__name__ == name, (
-            f"{name}.__name__ 是 {fn.__name__!r}，你的装饰器吃掉了名字。"
-            "在内层函数上加 @functools.wraps(fn)"
-        )
-    return f"已装饰 {deco}，__name__ 全部保留"
+        try:
+            a, b = cls(), cls()
+        except TypeError as e:
+            raise AssertionError(f"{name}() 构造不出来：{e}。有默认值的字段要放在没默认值的后面") from None
+        for f in factories:
+            va = getattr(a, f)
+            if not isinstance(va, list):
+                continue
+            va.append("x")
+            assert getattr(b, f) == [], (
+                f"{name}.{f} 被两个实例共享了：{getattr(b, f)}。"
+                "要用 field(default_factory=list)，不是 = []"
+            )
+            checked.append(f"{name}.{f}")
+    assert checked, f"有 dataclass {candidates}，但没有一个用 default_factory 的可变字段"
+    return f"隔离正常：{checked}"
 
 
-check("1. add/sub/mul 与 history", t_methods)
-check("2. 没有可变默认参数", t_no_mutable_defaults)
-check("3. history 不是类属性", t_history_not_class_attr)
-check("4. 两个实例互不污染", t_isolated)
-check("5. total 用 None 哨兵", t_total)
-check("6. 装饰器没吃掉名字", t_decorator)
+check("1. 写法 · 没有可变默认参数", t_no_mutable_default)
+check("2. 写法 · 没有可变类属性", t_no_mutable_class_attr)
+check("3. 行为 · 两个计算器互不污染", t_instances_isolated)
+check("4. 行为 · 端到端算式与契约一致", t_arithmetic)
+check("5. 行为 · 装饰器没吃掉函数名", t_decorator_keeps_name)
+check("6. 行为 · dataclass 用 default_factory", t_dataclass_factory)
 
 passed = sum(1 for ok, _ in results if ok)
 for ok, msg in results:
     print(f"{'✓' if ok else '✗'} {msg}")
 
-print("\n── 以下 1 项机器判不了，你自己批 ──")
-print("  □ 第 5 题：4 句话讲清「Python 类体 ≈ JS static」，含实例字段的写法")
+print("\n── 以下 3 项机器判不了，你自己批 ──")
+print("  □ 第 2 题：你真的先猜了再看输出，而且猜错了至少一次")
+print("  □ 第 3 题：一句话能说清「Python 和 JS 的默认值分别在哪一刻求值」")
+print("  □ 第 5 题：写出了 __name__ 变成 inner 的那一行，并且用 wraps 修回去了")
 
 print(f"\nDay 2 {'过关' if passed == len(results) else '未过关'}："
-      f"{passed}/{len(results)} 项自动检查通过，1 项需你自批")
+      f"{passed}/{len(results)} 项自动检查通过，3 项需你自批")
 sys.exit(0 if passed == len(results) else 1)
