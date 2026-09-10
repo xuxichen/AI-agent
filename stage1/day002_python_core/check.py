@@ -2,8 +2,8 @@
 
     uv run python stage1/day002_python_core/check.py
 
-它读你的 calculator.py：先用 AST 查写法，再 exec 进来查运行时行为。
-calculator.py 不存在时 6 项全红——你不写文件它是过不了的。
+它读你的 code/python/calculator.py：先用 AST 查写法，再 exec 进来查运行时行为。
+文件不存在时它一句不报、直接 0/6 退出——你不写文件它是过不了的。
 
 注意：这里不用 importlib，直接编译源码文本。importlib 会命中 __pycache__ 里
 的陈旧字节码，让你改错了却看到绿灯（我踩过，两版文件大小相同、同一秒写入，
@@ -18,7 +18,7 @@ from pathlib import Path
 
 HERE = Path(__file__).resolve().parent
 ROOT = HERE.parent.parent
-TARGET = HERE / "calculator.py"
+TARGET = HERE / "code" / "python" / "calculator.py"
 
 results: list[tuple[bool, str]] = []
 
@@ -35,7 +35,7 @@ def check(label: str, fn) -> None:
 
 if not TARGET.exists():
     print(f"✗ 找不到 {TARGET.relative_to(ROOT)}")
-    print("  先做作业第 6 题：在 stage1/day002_python_core/ 下建 calculator.py")
+    print("  先做作业第 4 题：在 stage1/day002_python_core/code/python/ 下建 calculator.py")
     print("\nDay 2 未过关：0/6")
     sys.exit(1)
 
@@ -75,14 +75,14 @@ def t_no_mutable_default():
         f"可变默认值 {bad}。默认值只在 def 那一行求值一次，"
         "改成 None 哨兵：def f(x, acc=None) 然后 if acc is None: acc = []"
     )
-    assert "running_total" in FUNCS, "还没写 running_total（作业第 6 题要求 1）"
+    assert "running_total" in FUNCS, "还没写 running_total（作业第 4 题要求 1）"
     defaults = [ast.unparse(d) for d in FUNCS["running_total"].args.defaults]
     return f"零个可变默认值；running_total 的默认值是 {defaults}"
 
 
 # ---- 2. Calculator 的历史记录不能是类属性 ----
 def t_no_mutable_class_attr():
-    assert "Calculator" in CLASSES, "还没写 class Calculator（作业第 6 题要求 2）"
+    assert "Calculator" in CLASSES, "还没写 class Calculator（作业第 4 题要求 2）"
     bad = []
     for st in CLASSES["Calculator"].body:
         if isinstance(st, ast.Assign) and isinstance(st.value, MUTABLE):
@@ -145,7 +145,7 @@ def t_decorator_keeps_name():
     mine = {n for n in used if n in FUNCS}
     assert mine, (
         f"没有你自己的装饰器被用上（现有装饰器：{sorted(used) or '无'}）。"
-        "作业第 6 题要求 3：写一个 log_call 并 @ 在 add 或 sub 上"
+        "作业第 4 题要求 4：写一个 log_call 并 @ 在 add 或 sub 上"
     )
     body = ast.unparse(FUNCS[next(iter(mine))])
     assert "wraps" in body, f"装饰器 {sorted(mine)} 里没有 functools.wraps"
@@ -159,7 +159,7 @@ def t_dataclass_factory():
         for name, cls in vars(mod).items()
         if isinstance(cls, type) and hasattr(cls, "__dataclass_fields__")
     ]
-    assert candidates, "文件里没有任何 @dataclass（作业第 6 题要求 4）"
+    assert candidates, "文件里没有任何 @dataclass（作业第 4 题要求 5）"
     checked = []
     for name in candidates:
         cls = getattr(mod, name)
@@ -200,9 +200,9 @@ for ok, msg in results:
     print(f"{'✓' if ok else '✗'} {msg}")
 
 print("\n── 以下 3 项机器判不了，你自己批 ──")
-print("  □ 第 2 题：你真的先猜了再看输出，而且猜错了至少一次")
-print("  □ 第 3 题：一句话能说清「Python 和 JS 的默认值分别在哪一刻求值」")
-print("  □ 第 5 题：写出了 __name__ 变成 inner 的那一行，并且用 wraps 修回去了")
+print("  □ 第 1 题：三个 bug 你都是先猜再改的，而且至少猜错了一个")
+print("  □ 第 2 题：shout 去掉 @functools.wraps 后，你看到了什么？你能说出那个 repr 里哪一段是内层函数名吗")
+print("  □ 第 3 题：Cart 的两个字段你都写了 default_factory，而不是只写了一个")
 
 print(f"\nDay 2 {'过关' if passed == len(results) else '未过关'}："
       f"{passed}/{len(results)} 项自动检查通过，3 项需你自批")
